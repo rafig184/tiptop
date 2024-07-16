@@ -1,5 +1,4 @@
 import 'dart:ui';
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -7,6 +6,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:tiptop/utils/colors.dart';
 import 'package:group_button/group_button.dart';
+import 'package:collection/collection.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -28,10 +29,16 @@ class _HomePageState extends State<HomePage> {
   String otherTip = "Other";
   List<Widget> textFields = [];
   List personalTips = [];
+  List personalBills = [];
   int userIndex = 0;
   int personalTip = 0;
+  num tipSum = 0;
+  num personalBillSum = 0;
+  num tipLeft = 0;
+  double totalPriceWithTip = 0;
+  List totalPersonalWithTip = [];
 
-  void tipSelection(selectedTipIndex) {
+  Future<void> tipSelection(selectedTipIndex) async {
     if (selectedTipIndex == 0) {
       setState(() {
         selectedTip = 0.10;
@@ -53,8 +60,8 @@ class _HomePageState extends State<HomePage> {
     } else if (selectedTipIndex == 3) {
       _showMyDialog();
     }
-
     calculateTotalTip();
+    await totalTipsSum();
   }
 
   int calculateTotalTip() {
@@ -72,14 +79,16 @@ class _HomePageState extends State<HomePage> {
   }
 
   void calculatePersonalTip(int index) {
+    double cost = double.tryParse(controllers[index].text) ?? 0.0;
+    double personalTip = cost * (selectedTip ?? 0.0);
+    var totalPersonalWithTips = cost + personalTip;
+    // Update the state with the calculated personal tip
     setState(() {
-      double cost = double.tryParse(controllers[index].text) ?? 0.0;
-      double personalTip = cost * (selectedTip ?? 0.0);
-
-      // Update the state with the calculated personal tip
       personalTips[index] = personalTip;
+      totalPersonalWithTip[index] = totalPersonalWithTips;
     });
     print(personalTips);
+    print(totalPersonalWithTips);
   }
 
   Future<void> _showMyDialog() async {
@@ -134,7 +143,7 @@ class _HomePageState extends State<HomePage> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           TextButton(
-                              onPressed: () {
+                              onPressed: () async {
                                 String fixedPresentageTip =
                                     '0.${customTipController.text}';
                                 double fixedCustomeTip =
@@ -144,9 +153,12 @@ class _HomePageState extends State<HomePage> {
                                   selectedTip = fixedCustomeTip;
                                   isCustomTip = true;
                                 });
-                                Navigator.of(context).pop();
-
+                                for (int i = 0; i < controllers.length; i++) {
+                                  calculatePersonalTip(i);
+                                }
                                 calculateTotalTip();
+                                await totalTipsSum();
+                                Navigator.of(context).pop();
                               },
                               child: const Text("OK")),
                           const SizedBox(
@@ -171,7 +183,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Future<void> errorDialog() async {
+  Future<void> errorDialog(text) async {
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -191,10 +203,10 @@ class _HomePageState extends State<HomePage> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: <Widget>[
-                      const Text(
-                        "Please select total price first..",
+                      Text(
+                        text,
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.normal,
                         ),
@@ -230,64 +242,38 @@ class _HomePageState extends State<HomePage> {
 
       TextEditingController controller = TextEditingController();
       controllers.add(controller);
-
-      textFields.add(
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Row(
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: TextField(
-                    onSubmitted: (String value) {
-                      calculatePersonalTip(userIndex);
-                    },
-                    controller: controller,
-                    textAlign: TextAlign.center,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: <TextInputFormatter>[
-                      FilteringTextInputFormatter.allow(
-                          RegExp(r'^\d+\.?\d{0,2}')),
-                    ],
-                    decoration: InputDecoration(
-                      icon:
-                          const Icon(Icons.credit_card, color: secondaryColor),
-                      filled: true,
-                      fillColor: inputsColor,
-                      border: InputBorder.none,
-                      labelText: 'TipToper $userIndex cost',
-                    ),
-                  ),
-                ),
-                Expanded(
-                    flex: 2,
-                    child: Container(
-                        decoration: const BoxDecoration(
-                          borderRadius: BorderRadius.only(
-                            topRight: Radius.circular(50),
-                            bottomRight: Radius.circular(50),
-                          ),
-                          color: Colors.white,
-                        ),
-                        height: 55,
-                        child: Center(
-                          child: Text(
-                            'Tip : $personalTip',
-                            style: const TextStyle(
-                              color: secondaryColor,
-                              fontSize: 20,
-                            ),
-                          ),
-                        ))),
-              ],
-            ),
-          ),
-        ),
-      );
+      personalTips.add(0.0);
+      totalPersonalWithTip.add(0.0);
     });
-    print(controllers);
+  }
+
+  Future<void> deletePersonalBill(dynamic index) async {
+    setState(() {
+      userIndex = userIndex - 1;
+      controllers.removeAt(index);
+      personalTips.removeAt(index);
+      totalPersonalWithTip.removeAt(index);
+    });
+    calculateTotalTip();
+    await totalTipsSum();
+  }
+
+  Future<void> totalTipsSum() async {
+    setState(() {
+      tipSum = 0.0;
+    });
+    for (int i = 0; i < personalTips.length; i++) {
+      tipSum += personalTips[i];
+    }
+    setState(() {
+      tipLeft = totalTip - tipSum;
+      tipLeft = double.parse(tipLeft.toStringAsFixed(2));
+
+      double totalPrice = double.tryParse(totalPriceController.text) ?? 0.0;
+      totalPriceWithTip = totalTip + totalPrice;
+    });
+    print('tipSum: $tipSum');
+    print('tipLeft: $tipLeft');
   }
 
   @override
@@ -365,6 +351,7 @@ class _HomePageState extends State<HomePage> {
                 ),
                 Column(
                   children: [
+                    const SizedBox(height: 10),
                     const Text(
                       "Select Tip :",
                       style: TextStyle(color: secondaryColor, fontSize: 18),
@@ -375,19 +362,29 @@ class _HomePageState extends State<HomePage> {
                       onSelected: (String value, int index, bool isSelected) {
                         if (totalPriceController.text.isEmpty) {
                           selectedTipIndex = null;
-                          errorDialog();
+                          errorDialog("Please select total price first..");
                           return;
+                        } else {
+                          setState(() {
+                            selectedTipIndex = index;
+                          });
+                          tipSelection(index);
+                          setState(() {
+                            for (int i = 0; i < controllers.length; i++) {
+                              calculatePersonalTip(i);
+                              totalTipsSum();
+                            }
+                          });
+
+                          print(personalTips);
                         }
-                        setState(() {
-                          selectedTipIndex = index;
-                        });
-                        tipSelection(index);
                       },
                       options: GroupButtonOptions(
                         selectedColor: secondaryColor,
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
+                    const SizedBox(height: 10),
                     IconButton.filledTonal(
                         style: ButtonStyle(
                           backgroundColor:
@@ -395,19 +392,133 @@ class _HomePageState extends State<HomePage> {
                         ),
                         color: Colors.white,
                         onPressed: () {
-                          _addTextField();
+                          if (totalTip == tipSum) {
+                            errorDialog(
+                                "You already calculate the whole bill..");
+                            return;
+                          } else {
+                            _addTextField();
+                          }
                         },
                         icon: const Icon(Icons.add)),
                   ],
                 ),
                 Expanded(
                   child: ListView.builder(
-                    itemCount: textFields.length,
+                    itemCount: userIndex,
                     itemBuilder: (context, index) {
-                      return textFields[index];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: Slidable(
+                          startActionPane: ActionPane(
+                              motion: const ScrollMotion(),
+                              extentRatio: 0.2,
+                              children: [
+                                SlidableAction(
+                                  onPressed: (context) =>
+                                      deletePersonalBill(index),
+                                  icon: Icons.delete,
+                                  backgroundColor: Colors.red.shade300,
+                                  borderRadius: const BorderRadius.only(
+                                      topLeft: Radius.circular(12),
+                                      bottomLeft: Radius.circular(12)),
+                                ),
+                              ]),
+                          endActionPane: ActionPane(
+                            motion: const ScrollMotion(),
+                            extentRatio: 0.5,
+                            children: [
+                              SlidableAction(
+                                onPressed: (context) {},
+                                label:
+                                    'Total + Tip : ${totalPersonalWithTip[index].toStringAsFixed(2)}',
+                                backgroundColor:
+                                    const Color.fromARGB(255, 219, 219, 219),
+                                borderRadius: const BorderRadius.only(
+                                    topRight: Radius.circular(12),
+                                    bottomRight: Radius.circular(12),
+                                    topLeft: Radius.circular(12),
+                                    bottomLeft: Radius.circular(12)),
+                              ),
+                            ],
+                          ),
+                          child: Container(
+                            margin:
+                                const EdgeInsets.symmetric(horizontal: 16.0),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  flex: 3,
+                                  child: TextField(
+                                    onChanged: (String value) async {
+                                      num cost = int.tryParse(value) ?? 0;
+                                      double newTip =
+                                          cost * (selectedTip ?? 0.0);
+                                      if ((tipSum + newTip) > totalTip) {
+                                        errorDialog(
+                                            "You try to pay more than the bill is..");
+                                        return;
+                                      } else {
+                                        calculatePersonalTip(index);
+                                        await totalTipsSum();
+                                      }
+                                    },
+                                    controller: controllers[index],
+                                    textAlign: TextAlign.center,
+                                    keyboardType: TextInputType.number,
+                                    inputFormatters: <TextInputFormatter>[
+                                      FilteringTextInputFormatter.allow(
+                                          RegExp(r'^\d+\.?\d{0,2}')),
+                                    ],
+                                    decoration: InputDecoration(
+                                      icon: const Icon(Icons.credit_card,
+                                          color: secondaryColor),
+                                      filled: true,
+                                      fillColor: Colors.grey[200],
+                                      border: InputBorder.none,
+                                      labelText: 'TipToper ${index + 1} cost',
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  flex: 2,
+                                  child: Container(
+                                    decoration: const BoxDecoration(
+                                      borderRadius: BorderRadius.only(
+                                        topRight: Radius.circular(50),
+                                        bottomRight: Radius.circular(50),
+                                      ),
+                                      color: Colors.white,
+                                    ),
+                                    height: 55,
+                                    child: Center(
+                                      child: Text(
+                                        'Tip: ${personalTips[index].toStringAsFixed(2)}',
+                                        style: const TextStyle(
+                                          color:
+                                              secondaryColor, // Replace with your secondary color
+                                          fontSize: 20,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
                     },
                   ),
                 ),
+                Text(
+                  'Tips left to pay $tipLeft',
+                  style: const TextStyle(
+                    color: secondaryColor, // Replace with your secondary color
+                    fontSize: 20,
+                  ),
+                ),
+                const SizedBox(height: 10),
               ],
             ),
           )),
@@ -415,7 +526,7 @@ class _HomePageState extends State<HomePage> {
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
-            height: 60,
+            height: 70,
             child: Container(
               width: double.infinity,
               margin: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -424,14 +535,25 @@ class _HomePageState extends State<HomePage> {
                 borderRadius: BorderRadius.circular(12.0),
               ),
               child: Center(
-                child: totalPriceController.text.isEmpty
-                    ? const Text(
-                        "Total Tip : 0",
-                        style: TextStyle(color: secondaryColor, fontSize: 20),
-                      )
-                    : Text("Total Tip : $totalTip",
+                child: Column(
+                  children: [
+                    const SizedBox(height: 7),
+                    Center(
+                      child: totalPriceController.text.isEmpty
+                          ? const Text(
+                              "Total Tip : 0",
+                              style: TextStyle(
+                                  color: secondaryColor, fontSize: 18),
+                            )
+                          : Text("Total Tip : $totalTip",
+                              style: const TextStyle(
+                                  color: secondaryColor, fontSize: 18)),
+                    ),
+                    Text("Total bill + Tip : $totalPriceWithTip",
                         style: const TextStyle(
                             color: secondaryColor, fontSize: 20)),
+                  ],
+                ),
               ),
             ),
           ),
