@@ -38,7 +38,7 @@ dependencies:
   loading_animation_widget: ^1.2.1
   group_button: ^5.3.4
   flutter_slidable: ^3.1.1
-
+  
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -49,7 +49,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^3.0.0
-
+  
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
@@ -65,7 +65,7 @@ flutter:
   assets:
   - images/
   #   - images/a_dot_ham.jpeg
-
+  
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware
 

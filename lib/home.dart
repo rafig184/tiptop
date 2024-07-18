@@ -73,7 +73,7 @@ class _HomePageState extends State<HomePage> {
     // Ensure selectedTip is not null by providing a default value
     double tipPercentage = selectedTip ?? 0.0;
     // Calculate the total tip
-    int roundedTotalTip = (totalPrice * tipPercentage).round();
+    int roundedTotalTip = (totalPrice * tipPercentage).ceil();
     setState(() {
       totalTip = roundedTotalTip;
     });
@@ -83,8 +83,8 @@ class _HomePageState extends State<HomePage> {
 
   void calculatePersonalTip(int index) {
     double cost = double.tryParse(controllers[index].text) ?? 0.0;
-    double personalTip = cost * (selectedTip ?? 0.0);
-    var totalPersonalWithTips = cost + personalTip;
+    int personalTip = (cost * (selectedTip ?? 0.0)).ceil();
+    int totalPersonalWithTips = (cost + personalTip).ceil();
     // Update the state with the calculated personal tip
     setState(() {
       personalTips[index] = personalTip;
@@ -148,18 +148,17 @@ class _HomePageState extends State<HomePage> {
                         children: [
                           TextButton(
                               onPressed: () async {
-                                String fixedPresentageTip =
-                                    '0.${customTipController.text}';
-                                double fixedCustomeTip =
-                                    double.tryParse(fixedPresentageTip) ?? 0;
+                                int customTipPercentage =
+                                    int.tryParse(customTipController.text) ?? 0;
+                                double fixedCustomTip =
+                                    customTipPercentage / 100.0;
 
                                 setState(() {
-                                  selectedTip = fixedCustomeTip;
+                                  selectedTip = fixedCustomTip;
                                   isCustomTip = true;
                                 });
                                 for (int i = 0; i < controllers.length; i++) {
                                   calculatePersonalTip(i);
-                                  // calculatePersonalBill(i);
                                 }
                                 calculateTotalTip();
                                 await totalTipsSum();
@@ -270,40 +269,24 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> totalTipsSum() async {
     setState(() {
-      tipSum = 0.0;
+      tipSum = 0;
     });
     for (int i = 0; i < personalTips.length; i++) {
       tipSum += personalTips[i];
     }
     setState(() {
       tipLeft = totalTip - tipSum;
-      tipLeft = double.parse(tipLeft.toStringAsFixed(2));
+      tipLeft = double.parse(tipLeft.toStringAsFixed(0));
 
       double totalPrice = double.tryParse(totalPriceController.text) ?? 0.0;
-      totalPriceWithTip = totalTip + totalPrice;
+      totalPriceWithTip = (totalTip + totalPrice).ceilToDouble();
     });
     print('tipSum: $tipSum');
     print('tipLeft: $tipLeft');
   }
 
-  // Future<void> totalBillsSum() async {
-  //   setState(() {
-  //     billSum = 0.0;
-  //   });
-  //   setState(() {
-  //     for (int i = 0; i < personalBills.length; i++) {
-  //       billSum += personalBills[i];
-  //     }
-
-  //     double totalPrice = double.tryParse(totalPriceController.text) ?? 0.0;
-  //     billLeft = totalPrice - billSum;
-  //   });
-
-  //   print('bill sum: $billSum');
-  //   print('bill Left: $billLeft');
-  // }
   Future<void> totalBillsSum() async {
-    double billSumTemp = 0.0;
+    num billSumTemp = 0;
     for (int i = 0; i < personalBills.length; i++) {
       billSumTemp += personalBills[i];
     }
@@ -311,7 +294,7 @@ class _HomePageState extends State<HomePage> {
     double totalPrice = double.tryParse(totalPriceController.text) ?? 0.0;
     setState(() {
       billSum = billSumTemp;
-      billLeft = totalPrice - billSum;
+      billLeft = (totalPrice - billSum).ceil();
     });
 
     print('bill sum: $billSum');
@@ -487,7 +470,7 @@ class _HomePageState extends State<HomePage> {
                                 borderRadius:
                                     const BorderRadius.all(Radius.circular(12)),
                                 child: Text(
-                                  'Total + Tip : ${totalPersonalWithTip[index].toStringAsFixed(2)}',
+                                  'Total + Tip : ${totalPersonalWithTip[index].ceil()}',
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w500,
                                     fontSize: 18,
@@ -515,10 +498,11 @@ class _HomePageState extends State<HomePage> {
                                           0.0;
 
                                       setState(() {
-                                        personalTips[index] = newTip;
+                                        personalTips[index] =
+                                            newTip.ceilToDouble();
                                         personalBills[index] = cost;
                                         totalPersonalWithTip[index] =
-                                            cost + newTip;
+                                            cost + newTip.ceilToDouble();
                                       });
 
                                       // Calculate sums
@@ -574,7 +558,7 @@ class _HomePageState extends State<HomePage> {
                                             MainAxisAlignment.center,
                                         children: [
                                           Text(
-                                            'Tip: ${personalTips[index].toStringAsFixed(2)}',
+                                            'Tip: ${personalTips[index].ceil()}',
                                             style: const TextStyle(
                                               color:
                                                   secondaryColor, // Replace with your secondary color
@@ -599,14 +583,14 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
                 Text(
-                  'Bill left to pay : $billLeft',
+                  'Bill left to pay : ${billLeft.ceil()}',
                   style: const TextStyle(
                     color: secondaryColor,
                     fontSize: 18,
                   ),
                 ),
                 Text(
-                  'Tips left to pay : $tipLeft',
+                  'Tips left to pay : ${(tipLeft.ceil() <= 0) ? 0 : tipLeft.ceil() + 1}',
                   style: const TextStyle(
                     color: secondaryColor,
                     fontSize: 18,
@@ -639,11 +623,11 @@ class _HomePageState extends State<HomePage> {
                               style: TextStyle(
                                   color: secondaryColor, fontSize: 18),
                             )
-                          : Text("Total Tip : $totalTip",
+                          : Text("Total Tip : ${totalTip.ceil()}",
                               style: const TextStyle(
                                   color: secondaryColor, fontSize: 18)),
                     ),
-                    Text("Total Bill + Tip : $totalPriceWithTip",
+                    Text("Total Bill + Tip : ${totalPriceWithTip.ceil()}",
                         style: const TextStyle(
                             color: secondaryColor, fontSize: 20)),
                   ],
